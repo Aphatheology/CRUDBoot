@@ -1,0 +1,42 @@
+package com.example.crudboot.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserDto {
+    private Long id;
+
+    @NotBlank(message = "Username cannot be blank")
+    private String username;
+
+    @NotBlank(message = "Email cannot be blank")
+    @Email(regexp = ".+[@].+[\\.].+", message = "Invalid email")
+    private String email;
+
+    private String fullname;
+
+    @Size(min = 6, max = 20, message = "Invalid password, password must be between 6 to 20 characters")
+    @NotBlank(message = "Password can not be blank")
+    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)[a-zA-Z\\d]{6,20}$", message = "Invalid password, it must have at least one lower case, upper case and number")
+    private String password;
+
+    private String role;
+    private Boolean verified;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createdAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updatedAt;
+}
