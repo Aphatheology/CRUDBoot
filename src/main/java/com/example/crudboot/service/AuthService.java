@@ -1,33 +1,40 @@
 package com.example.crudboot.service;
 
+import com.example.crudboot.dto.AuthenticationResponse;
+import com.example.crudboot.dto.LoginDto;
 import com.example.crudboot.dto.UserDto;
+import com.example.crudboot.entity.Role;
 import com.example.crudboot.entity.Token;
 import com.example.crudboot.entity.Users;
+import com.example.crudboot.event.RegistrationCompleteEvent;
 import com.example.crudboot.repository.TokenRepository;
 import com.example.crudboot.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.UUID;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
     private final PasswordEncoder passwordEncoder;
     private final TokenRepository tokenRepository;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+    private final ApplicationEventPublisher publisher;
 
-    public AuthService(UserRepository userRepository, ModelMapper modelMapper, PasswordEncoder passwordEncoder, TokenRepository tokenRepository) {
-        this.userRepository = userRepository;
-        this.modelMapper = modelMapper;
-        this.passwordEncoder = passwordEncoder;
-        this.tokenRepository = tokenRepository;
-    }
 
     public UserDto map2Dto(Users user) {
         UserDto userDto = new UserDto();
@@ -44,7 +51,7 @@ public class AuthService {
         Users user = new Users();
         user.setEmail(userDto.getEmail());
         user.setFullname(userDto.getFullname());
-        user.setRole("USER");
+        user.setRole(Role.USER);
         user.setUsername(userDto.getUsername());
         user.setPassword(this.passwordEncoder.encode(userDto.getPassword()));
 
@@ -59,11 +66,20 @@ public class AuthService {
                 request.getContextPath();
     }
 
-    public Users register(UserDto registerBody) {
+    public HashMap<String, String> register(UserDto registerBody, HttpServletRequest request) {
         Users user = map2Entity(registerBody);
         this.userRepository.save(user);
 
-        return user;
+        this.publisher.publishEvent(new RegistrationCompleteEvent(user, getApplicationUrl(request)));
+
+//        var jwtToken = this.jwtService.generateToken(user);
+//        AuthenticationResponse authenticationResponse = AuthenticationResponse.builder().token(jwtToken).build();
+
+        var finalResponse = new HashMap<String, String>();
+
+        finalResponse.put("message", "Registration successful, verification email sent");
+        finalResponse.put("token", this.jwtService.generateToken(user));
+        return finalResponse;
     }
 
     public void saveToken(Users user, String token, String tokenType) {
@@ -83,7 +99,7 @@ public class AuthService {
             return "Expired token";
         }
 
-        user.setVerified(true);
+        user.setIsVerified(true);
         this.userRepository.save(user);
         this.tokenRepository.delete(verificationToken);
 
@@ -109,5 +125,17 @@ public class AuthService {
         findToken.updateToken(UUID.randomUUID().toString(), tokenType);
         Token updatedToken = tokenRepository.save(findToken);
         return updatedToken.getToken();
+    }
+
+    public AuthenticationResponse login(LoginDto loginBody) {
+        this.authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginBody.getUsername(), loginBody.getPassword())
+        );
+
+        var user = this.userRepository.findUserByUsername(loginBody.getUsername()).orElseThrow();
+
+        var jwtToken = this.jwtService.generateToken(user);
+
+        return AuthenticationResponse.builder().token(jwtToken).build();
     }
 }
