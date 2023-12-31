@@ -1,7 +1,5 @@
 package com.example.crudboot.config;
 
-import com.example.crudboot.dto.CommentDto;
-import com.example.crudboot.dto.PostDto;
 import com.example.crudboot.dto.UserDto;
 import com.example.crudboot.service.CommentService;
 import com.example.crudboot.service.PostService;

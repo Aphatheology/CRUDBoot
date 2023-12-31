@@ -19,8 +19,8 @@ public class JwtService {
 
     @Value("${app.jwt.secret-key}")
     private String JWT_SECRET_KEY;
-    @Value("${app.jwt.secret-key}")
-    private String JWT_EXPIRATION;
+    @Value("${app.jwt.expiration}")
+    private Long JWT_EXPIRATION;
 
 
 
@@ -55,7 +55,7 @@ public class JwtService {
                 .claims()
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 10))
+                .expiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION))
                 .add(extraClaims)
                 .and().compact();
     }
